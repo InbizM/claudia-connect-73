@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import Button from './Button';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from '@/components/ui/input';
@@ -61,7 +60,7 @@ const TokenPurchaseModal: React.FC<TokenPurchaseModalProps> = ({
       form.reset();
     }
   };
-
+  
   const handleRegisterClick = () => {
     // Close the purchase modal and open registration
     setShowRegistrationModal(true);
@@ -106,6 +105,8 @@ const TokenPurchaseModal: React.FC<TokenPurchaseModalProps> = ({
     <>
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="bg-[#142126] border-claudia-primary/20 text-claudia-white p-0 overflow-hidden max-w-md">
+          <DialogTitle className="sr-only">Comprar Mensajes</DialogTitle>
+          <DialogDescription className="sr-only">Selecciona la cantidad de mensajes que deseas comprar</DialogDescription>
           <div className="relative overflow-hidden">
             {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-claudia-primary opacity-10 rounded-bl-full -z-10"></div>
