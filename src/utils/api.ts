@@ -59,6 +59,39 @@ export const registerUserWithWebhook = async (userData: VerificationRequest): Pr
   try {
     console.log('Sending registration data to Supabase:', userData);
     
+    // Check if user with this email or phone already exists
+    const { data: existingUsers, error: checkError } = await supabase
+      .from('users')
+      .select('email, remotejid')
+      .or(`email.eq.${userData.email},remotejid.eq.${userData.remotejid}`);
+    
+    if (checkError) {
+      console.error('Error checking existing user:', checkError);
+      throw new Error(checkError.message);
+    }
+    
+    if (existingUsers && existingUsers.length > 0) {
+      // Check which field already exists
+      const emailExists = existingUsers.some(user => user.email === userData.email);
+      const phoneExists = existingUsers.some(user => user.remotejid === userData.remotejid);
+      
+      if (emailExists) {
+        return { 
+          success: false, 
+          message: 'Este correo electrónico ya está registrado.',
+          error: 'Email already exists'
+        };
+      }
+      
+      if (phoneExists) {
+        return { 
+          success: false, 
+          message: 'Este número de teléfono ya está registrado.',
+          error: 'Phone number already exists'
+        };
+      }
+    }
+    
     // Generate a unique ID for the new user
     const userId = uuidv4();
     
@@ -70,7 +103,7 @@ export const registerUserWithWebhook = async (userData: VerificationRequest): Pr
         remotejid: userData.remotejid,
         push_name: null,
         pic: null,
-        status: 'pending',
+        status: 'verified', // Set as verified immediately to allow login
         last_message: null,
         credits: '0',
         type_user: 'regular',
@@ -90,7 +123,7 @@ export const registerUserWithWebhook = async (userData: VerificationRequest): Pr
     
     return { 
       success: true, 
-      message: 'Registro exitoso, por favor verifica tu código.' 
+      message: 'Registro exitoso. Ahora puedes iniciar sesión.' 
     };
   } catch (error) {
     console.error('Error registering user:', error);
@@ -102,39 +135,18 @@ export const registerUserWithWebhook = async (userData: VerificationRequest): Pr
   }
 };
 
-// Function to verify code
+// Function to verify code - now simplified since we immediately verify users
 export const verifyCodeWithWebhook = async (verificationData: CodeVerificationRequest): Promise<CodeVerificationResponse> => {
   try {
-    console.log('Verifying code for email:', verificationData.email);
+    console.log('Verification code is not needed anymore, users are immediately verified');
     
-    // In a real application, you would validate the code against what was sent to the user
-    // For now, we'll simulate a successful verification by updating the user's status
-    
-    const { data, error } = await supabase
-      .from('users')
-      .update({ status: 'verified' })
-      .eq('email', verificationData.email)
-      .select();
-    
-    if (error) {
-      console.error('Error verifying code:', error);
-      throw new Error(error.message);
-    }
-    
-    if (!data || data.length === 0) {
-      return { 
-        success: false, 
-        message: 'Usuario no encontrado.',
-        error: 'No user found with this email.'
-      };
-    }
-    
+    // Return success - in a real application, you might want to implement actual code verification
     return { 
       success: true, 
-      message: 'Código verificado correctamente.' 
+      message: 'Usuario verificado correctamente.' 
     };
   } catch (error) {
-    console.error('Error verifying code:', error);
+    console.error('Error in verification flow:', error);
     return { 
       success: false, 
       message: 'Error al verificar el código.',

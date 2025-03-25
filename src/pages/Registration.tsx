@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import NavBar from '@/components/NavBar';
 import { useToast } from "@/hooks/use-toast";
@@ -7,7 +6,6 @@ import VerificationModal from '@/components/VerificationModal';
 import Button from '@/components/Button';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, Phone, User } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import CountrySelect from '@/components/CountrySelect';
 
 const Registration = () => {
@@ -52,7 +50,6 @@ const Registration = () => {
       return false;
     }
     
-    // Validate phone number without country code
     const phoneRegex = /^\d{7,15}$/;
     if (!phoneRegex.test(phoneNumber.replace(/\D/g, ''))) {
       toast({
@@ -92,9 +89,7 @@ const Registration = () => {
     setIsLoading(true);
     
     try {
-      // Combine country code and phone number
       const fullPhoneNumber = `${countryCode}${phoneNumber}`;
-      // Format phone number with WhatsApp format for remotejid
       const formattedPhone = fullPhoneNumber.startsWith('+') ? fullPhoneNumber.substring(1) : fullPhoneNumber;
       
       const response = await registerUserWithWebhook({
@@ -108,9 +103,8 @@ const Registration = () => {
       if (response.success) {
         toast({
           title: "Registro exitoso",
-          description: "Por favor verifica tu código.",
+          description: "Tu cuenta ha sido creada correctamente.",
         });
-        // Open the verification modal after successful registration
         setIsVerificationModalOpen(true);
       } else {
         toast({
@@ -143,7 +137,6 @@ const Registration = () => {
           </div>
           
           <div className="max-w-md mx-auto bg-[#1a2a30] rounded-lg shadow-xl p-8 relative overflow-hidden">
-            {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-claudia-primary opacity-10 rounded-bl-full -z-10"></div>
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-claudia-primary opacity-10 rounded-tr-full -z-10"></div>
             
@@ -278,7 +271,6 @@ const Registration = () => {
         </div>
       </main>
       
-      {/* Verification Modal - Only shown after successful registration */}
       {isVerificationModalOpen && (
         <VerificationModal
           isOpen={isVerificationModalOpen}
