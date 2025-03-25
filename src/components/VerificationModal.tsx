@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Dialog } from '@/components/ui/dialog';
 import Button from './Button';
 import { useToast } from "@/hooks/use-toast";
-import { verifyCodeWithWebhook } from '@/utils/api';
 import { useNavigate } from 'react-router-dom';
 
 type VerificationModalProps = {
