@@ -1,17 +1,8 @@
 
-// API utility functions for handling database operations
+// API utility functions for handling database operations with Supabase
 
 import { v4 as uuidv4 } from 'uuid';
-
-// Database connection configuration
-const DB_CONFIG = {
-  host: 'es.inbizmanager.cloud',
-  database: 'user_claudia',
-  user: 'postgres',
-  password: 'fd65bdc2b6386ee98f90',
-  port: 5432,
-  ssl: false
-};
+import { supabase } from "@/integrations/supabase/client";
 
 // Type definitions for API requests and responses
 type VerificationRequest = {
@@ -63,48 +54,38 @@ type TokenPurchaseResponse = {
   error?: string;
 };
 
-// API base URL for our server-side operations that handle database interaction
-const API_BASE_URL = 'https://nn.tumejorversionhoy.shop/api';
-
-// Function to send user registration data directly to PostgreSQL database
+// Function to register user with Supabase
 export const registerUserWithWebhook = async (userData: VerificationRequest): Promise<VerificationResponse> => {
   try {
-    console.log('Sending registration data to database:', userData);
+    console.log('Sending registration data to Supabase:', userData);
     
     // Generate a unique ID for the new user
     const userId = uuidv4();
     
-    // Prepare user data according to the table structure
-    const userDataForDb = {
-      id: userId,
-      remotejid: userData.remotejid,
-      push_name: null, // These fields are not provided during registration
-      pic: null,
-      status: 'pending', // New users start with pending status until verification
-      last_message: null,
-      credits: '0', // New users start with 0 credits
-      type_user: 'regular', // Default user type
-      name: userData.name,
-      lastname: userData.lastname,
-      email: userData.email,
-      password: userData.password, // In a production app, this should be hashed
-    };
+    // Insert user data into the Supabase users table
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        remotejid: userData.remotejid,
+        push_name: null,
+        pic: null,
+        status: 'pending',
+        last_message: null,
+        credits: '0',
+        type_user: 'regular',
+        name: userData.name,
+        lastname: userData.lastname,
+        email: userData.email,
+        password: userData.password, // In a production app, this should be hashed
+      })
+      .select();
     
-    // Since we're in a browser environment, we can't directly connect to PostgreSQL
-    // We need to use an API endpoint that will handle the connection securely
-    const response = await fetch(`${API_BASE_URL}/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userDataForDb),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (error) {
+      console.error('Error registering user:', error);
+      throw new Error(error.message);
     }
     
-    const data = await response.json();
     console.log('Registration response:', data);
     
     return { 
@@ -124,35 +105,34 @@ export const registerUserWithWebhook = async (userData: VerificationRequest): Pr
 // Function to verify code
 export const verifyCodeWithWebhook = async (verificationData: CodeVerificationRequest): Promise<CodeVerificationResponse> => {
   try {
-    console.log('Sending code verification data:', verificationData);
+    console.log('Verifying code for email:', verificationData.email);
     
-    const response = await fetch(`${API_BASE_URL}/verify`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(verificationData),
-    });
+    // In a real application, you would validate the code against what was sent to the user
+    // For now, we'll simulate a successful verification by updating the user's status
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const { data, error } = await supabase
+      .from('users')
+      .update({ status: 'verified' })
+      .eq('email', verificationData.email)
+      .select();
+    
+    if (error) {
+      console.error('Error verifying code:', error);
+      throw new Error(error.message);
     }
     
-    const data = await response.json();
-    console.log('Verification response:', data);
-    
-    if (data.success) {
-      return { 
-        success: true, 
-        message: 'Código verificado correctamente.' 
-      };
-    } else {
+    if (!data || data.length === 0) {
       return { 
         success: false, 
-        message: 'Código de verificación incorrecto.',
-        error: data.message || 'El código no coincide'
+        message: 'Usuario no encontrado.',
+        error: 'No user found with this email.'
       };
     }
+    
+    return { 
+      success: true, 
+      message: 'Código verificado correctamente.' 
+    };
   } catch (error) {
     console.error('Error verifying code:', error);
     return { 
@@ -166,22 +146,28 @@ export const verifyCodeWithWebhook = async (verificationData: CodeVerificationRe
 // Function to login user
 export const loginUser = async (loginData: LoginRequest): Promise<LoginResponse> => {
   try {
-    console.log('Sending login data:', loginData);
+    console.log('Authenticating user with phone:', loginData.phone);
     
-    const response = await fetch(`${API_BASE_URL}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(loginData),
-    });
+    // Query the users table to find the user with matching phone and password
+    const { data, error } = await supabase
+      .from('users')
+      .select()
+      .eq('remotejid', loginData.phone)
+      .eq('password', loginData.password) // In a production app, passwords should be hashed
+      .eq('status', 'verified');
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (error) {
+      console.error('Error logging in:', error);
+      throw new Error(error.message);
     }
     
-    const data = await response.json();
-    console.log('Login response:', data);
+    if (!data || data.length === 0) {
+      return { 
+        success: false, 
+        message: 'Credenciales incorrectas o usuario no verificado.',
+        error: 'Invalid credentials or unverified user.'
+      };
+    }
     
     return { 
       success: true, 
@@ -200,30 +186,55 @@ export const loginUser = async (loginData: LoginRequest): Promise<LoginResponse>
 // Function to purchase tokens
 export const purchaseTokens = async (purchaseData: TokenPurchaseRequest): Promise<TokenPurchaseResponse> => {
   try {
-    console.log('Processing token purchase:', purchaseData);
-    
-    const response = await fetch(`${API_BASE_URL}/purchase`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(purchaseData),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!purchaseData.phone) {
+      return {
+        success: false,
+        message: 'Número de teléfono no proporcionado.',
+        error: 'Phone number not provided.'
+      };
     }
     
-    const data = await response.json();
-    console.log('Purchase response:', data);
+    console.log('Processing token purchase for user:', purchaseData.phone);
     
-    // Calculate tokens based on amount and currency
-    const tokensAdded = purchaseData.amount;
+    // Get current user tokens
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('credits')
+      .eq('remotejid', purchaseData.phone)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching user data:', fetchError);
+      throw new Error(fetchError.message);
+    }
+    
+    if (!userData) {
+      return {
+        success: false,
+        message: 'Usuario no encontrado.',
+        error: 'User not found.'
+      };
+    }
+    
+    // Calculate new token amount
+    const currentTokens = parseInt(userData.credits) || 0;
+    const newTokens = currentTokens + purchaseData.amount;
+    
+    // Update user tokens
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ credits: newTokens.toString() })
+      .eq('remotejid', purchaseData.phone);
+    
+    if (updateError) {
+      console.error('Error updating tokens:', updateError);
+      throw new Error(updateError.message);
+    }
     
     return { 
       success: true, 
       message: 'Compra de tokens exitosa',
-      tokensAdded
+      tokensAdded: purchaseData.amount
     };
   } catch (error) {
     console.error('Error purchasing tokens:', error);
