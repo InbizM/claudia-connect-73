@@ -1,12 +1,12 @@
 
-// API utility functions for handling webhook calls
+// API utility functions for handling data
 
 type VerificationRequest = {
   name: string;
   lastname: string;
   email: string;
   remotejid: string;
-  password: string; // Añadimos el campo de contraseña
+  password: string;
 };
 
 type VerificationResponse = {
@@ -50,17 +50,27 @@ type TokenPurchaseResponse = {
   error?: string;
 };
 
-// Function to send user registration data to webhook
+// API base URL - this should point to your backend service
+const API_BASE_URL = 'https://nn.tumejorversionhoy.shop/api';
+
+// Function to send user registration data to backend
 export const registerUserWithWebhook = async (userData: VerificationRequest): Promise<VerificationResponse> => {
   try {
-    console.log('Sending registration data to webhook:', userData);
+    console.log('Sending registration data to backend:', userData);
     
+    // We're still using the webhook endpoint for now, but this could be changed to your own API
     const response = await fetch('https://nn.tumejorversionhoy.shop/webhook/9d6e3fae-6700-4314-aa41-8e1dadae0de1', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(userData),
+      body: JSON.stringify({
+        ...userData,
+        // Add an indicator that this request is for database insertion
+        action: 'register',
+        // Database credentials should not be in client-side code
+        // These will be handled on the server side
+      }),
     });
     
     if (!response.ok) {
@@ -68,7 +78,7 @@ export const registerUserWithWebhook = async (userData: VerificationRequest): Pr
     }
     
     const data = await response.json();
-    console.log('Registration webhook response:', data);
+    console.log('Registration response:', data);
     
     return { 
       success: true, 
@@ -84,17 +94,20 @@ export const registerUserWithWebhook = async (userData: VerificationRequest): Pr
   }
 };
 
-// Function to verify code through webhook
+// Function to verify code through backend
 export const verifyCodeWithWebhook = async (verificationData: CodeVerificationRequest): Promise<CodeVerificationResponse> => {
   try {
-    console.log('Sending code verification data to webhook:', verificationData);
+    console.log('Sending code verification data to backend:', verificationData);
     
     const response = await fetch('https://nn.tumejorversionhoy.shop/webhook/c1530bfd-a2c3-4c82-bb88-3e956d20b113', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(verificationData),
+      body: JSON.stringify({
+        ...verificationData,
+        action: 'verify',
+      }),
     });
     
     if (!response.ok) {
@@ -102,9 +115,8 @@ export const verifyCodeWithWebhook = async (verificationData: CodeVerificationRe
     }
     
     const data = await response.json();
-    console.log('Verification webhook response:', data);
+    console.log('Verification response:', data);
     
-    // Here we assume the API returns a success property
     if (data.success) {
       return { 
         success: true, 
@@ -132,8 +144,6 @@ export const loginUser = async (loginData: LoginRequest): Promise<LoginResponse>
   try {
     console.log('Sending login data:', loginData);
     
-    // Aquí normalmente llamaríamos a un endpoint de login,
-    // por ahora usaremos el mismo webhook para simular
     const response = await fetch('https://nn.tumejorversionhoy.shop/webhook/9d6e3fae-6700-4314-aa41-8e1dadae0de1', {
       method: 'POST',
       headers: {
@@ -141,7 +151,7 @@ export const loginUser = async (loginData: LoginRequest): Promise<LoginResponse>
       },
       body: JSON.stringify({
         ...loginData,
-        action: 'login'
+        action: 'login',
       }),
     });
     
@@ -171,8 +181,23 @@ export const purchaseTokens = async (purchaseData: TokenPurchaseRequest): Promis
   try {
     console.log('Processing token purchase:', purchaseData);
     
-    // Here we would normally call a payment processing API
-    // For now, we'll simulate a successful purchase
+    const response = await fetch('https://nn.tumejorversionhoy.shop/webhook/9d6e3fae-6700-4314-aa41-8e1dadae0de1', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...purchaseData,
+        action: 'purchase',
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Purchase response:', data);
     
     // Calculate tokens based on amount and currency
     const tokensAdded = purchaseData.amount;
