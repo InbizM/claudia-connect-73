@@ -1,6 +1,19 @@
 
-// API utility functions for handling data
+// API utility functions for handling database operations
 
+import { v4 as uuidv4 } from 'uuid';
+
+// Database connection configuration
+const DB_CONFIG = {
+  host: 'es.inbizmanager.cloud',
+  database: 'user_claudia',
+  user: 'postgres',
+  password: 'fd65bdc2b6386ee98f90',
+  port: 5432,
+  ssl: false
+};
+
+// Type definitions for API requests and responses
 type VerificationRequest = {
   name: string;
   lastname: string;
@@ -50,27 +63,41 @@ type TokenPurchaseResponse = {
   error?: string;
 };
 
-// API base URL - this should point to your backend service
+// API base URL for our server-side operations that handle database interaction
 const API_BASE_URL = 'https://nn.tumejorversionhoy.shop/api';
 
-// Function to send user registration data to backend
+// Function to send user registration data directly to PostgreSQL database
 export const registerUserWithWebhook = async (userData: VerificationRequest): Promise<VerificationResponse> => {
   try {
-    console.log('Sending registration data to backend:', userData);
+    console.log('Sending registration data to database:', userData);
     
-    // We're still using the webhook endpoint for now, but this could be changed to your own API
-    const response = await fetch('https://nn.tumejorversionhoy.shop/webhook/9d6e3fae-6700-4314-aa41-8e1dadae0de1', {
+    // Generate a unique ID for the new user
+    const userId = uuidv4();
+    
+    // Prepare user data according to the table structure
+    const userDataForDb = {
+      id: userId,
+      remotejid: userData.remotejid,
+      push_name: null, // These fields are not provided during registration
+      pic: null,
+      status: 'pending', // New users start with pending status until verification
+      last_message: null,
+      credits: '0', // New users start with 0 credits
+      type_user: 'regular', // Default user type
+      name: userData.name,
+      lastname: userData.lastname,
+      email: userData.email,
+      password: userData.password, // In a production app, this should be hashed
+    };
+    
+    // Since we're in a browser environment, we can't directly connect to PostgreSQL
+    // We need to use an API endpoint that will handle the connection securely
+    const response = await fetch(`${API_BASE_URL}/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        ...userData,
-        // Add an indicator that this request is for database insertion
-        action: 'register',
-        // Database credentials should not be in client-side code
-        // These will be handled on the server side
-      }),
+      body: JSON.stringify(userDataForDb),
     });
     
     if (!response.ok) {
@@ -94,20 +121,17 @@ export const registerUserWithWebhook = async (userData: VerificationRequest): Pr
   }
 };
 
-// Function to verify code through backend
+// Function to verify code
 export const verifyCodeWithWebhook = async (verificationData: CodeVerificationRequest): Promise<CodeVerificationResponse> => {
   try {
-    console.log('Sending code verification data to backend:', verificationData);
+    console.log('Sending code verification data:', verificationData);
     
-    const response = await fetch('https://nn.tumejorversionhoy.shop/webhook/c1530bfd-a2c3-4c82-bb88-3e956d20b113', {
+    const response = await fetch(`${API_BASE_URL}/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        ...verificationData,
-        action: 'verify',
-      }),
+      body: JSON.stringify(verificationData),
     });
     
     if (!response.ok) {
@@ -144,15 +168,12 @@ export const loginUser = async (loginData: LoginRequest): Promise<LoginResponse>
   try {
     console.log('Sending login data:', loginData);
     
-    const response = await fetch('https://nn.tumejorversionhoy.shop/webhook/9d6e3fae-6700-4314-aa41-8e1dadae0de1', {
+    const response = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        ...loginData,
-        action: 'login',
-      }),
+      body: JSON.stringify(loginData),
     });
     
     if (!response.ok) {
@@ -181,15 +202,12 @@ export const purchaseTokens = async (purchaseData: TokenPurchaseRequest): Promis
   try {
     console.log('Processing token purchase:', purchaseData);
     
-    const response = await fetch('https://nn.tumejorversionhoy.shop/webhook/9d6e3fae-6700-4314-aa41-8e1dadae0de1', {
+    const response = await fetch(`${API_BASE_URL}/purchase`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        ...purchaseData,
-        action: 'purchase',
-      }),
+      body: JSON.stringify(purchaseData),
     });
     
     if (!response.ok) {
